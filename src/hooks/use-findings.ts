@@ -19,17 +19,24 @@ export function useFindings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Primary sort by order (manual), secondary by creation date
-    const q = query(
-      collection(db, "findings"),
-      orderBy("order", "desc")
-    );
+    // We fetch without a strict 'orderBy(order)' filter initially 
+    // because documents without the 'order' field would be hidden by Firestore.
+    const q = query(collection(db, "findings"));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Finding[];
-      setFindings(data);
+      
+      // Client-side sorting to handle documents missing the 'order' field
+      const sorted = [...data].sort((a, b) => {
+        const orderA = a.order ?? (a.createdAt?.toMillis?.() || 0);
+        const orderB = b.order ?? (b.createdAt?.toMillis?.() || 0);
+        return orderB - orderA;
+      });
+
+      setFindings(sorted);
       setLoading(false);
     });
 
