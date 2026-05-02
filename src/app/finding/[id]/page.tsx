@@ -285,7 +285,7 @@ export default function FindingPage({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap mt-1">
-              {finding.tags.map((tag) => (
+              {Array.isArray(finding.tags) && finding.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
                 </Badge>

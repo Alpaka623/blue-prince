@@ -33,7 +33,7 @@ export function FindingCard({ finding }: { finding: Finding }) {
               <cat.icon className="w-3 h-3 mr-1" />
               {cat.label}
             </Badge>
-            {finding.tags.slice(0, 2).map((tag) => (
+            {Array.isArray(finding.tags) && finding.tags.slice(0, 2).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs">
                 {tag}
               </Badge>
