@@ -26,7 +26,6 @@ export function Header() {
       <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-14">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg tracking-tight">
           <span className="text-primary">Blue Prince</span>
-          <span className="text-muted-foreground font-normal text-sm">Wiki</span>
         </Link>
 
         <nav className="hidden sm:flex items-center gap-1">
