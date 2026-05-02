@@ -49,6 +49,7 @@ export default function FindingPage({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [initialDistance, setInitialDistance] = useState<number | null>(null);
   const imgContainerRef = useRef<HTMLDivElement>(null);
 
   if (loading) {
@@ -126,19 +127,47 @@ export default function FindingPage({
   }
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (zoom <= 1 || e.touches.length !== 1) return;
-    setIsDragging(true);
-    const touch = e.touches[0];
-    setStartPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+    if (e.touches.length === 1) {
+      if (zoom <= 1.01) return;
+      setIsDragging(true);
+      const touch = e.touches[0];
+      setStartPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+    } else if (e.touches.length === 2) {
+      setIsDragging(false);
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setInitialDistance(dist);
+    }
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!isDragging || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setOffset({
-      x: touch.clientX - startPos.x,
-      y: touch.clientY - startPos.y,
-    });
+    if (e.touches.length === 1 && isDragging) {
+      const touch = e.touches[0];
+      setOffset({
+        x: touch.clientX - startPos.x,
+        y: touch.clientY - startPos.y,
+      });
+    } else if (e.touches.length === 2 && initialDistance !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / initialDistance;
+      setInitialDistance(dist);
+      setZoom((z) => {
+        const newZoom = z * factor;
+        const clampedZoom = Math.min(5, Math.max(1, newZoom));
+        if (clampedZoom <= 1.01) setOffset({ x: 0, y: 0 });
+        return clampedZoom;
+      });
+    }
+  }
+
+  function handleTouchEnd() {
+    setIsDragging(false);
+    setInitialDistance(null);
   }
 
   function resetZoom() {
@@ -206,7 +235,7 @@ export default function FindingPage({
               onMouseLeave={handleMouseUp}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={handleMouseUp}
+              onTouchEnd={handleTouchEnd}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
