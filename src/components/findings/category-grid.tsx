@@ -12,8 +12,8 @@ interface CategoryGridProps {
 }
 
 export function CategoryGrid({ findings }: CategoryGridProps) {
-  // Get all unique categories from findings
-  const uniqueCategories = Array.from(new Set(findings.map(f => f.category)));
+  // Get all unique categories from findings, with safety check
+  const uniqueCategories = Array.from(new Set((findings || []).map(f => f.category)));
   
   const categoryGroups = uniqueCategories.map((cat) => {
     const items = findings.filter((f) => f.category === cat);

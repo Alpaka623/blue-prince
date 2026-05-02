@@ -9,11 +9,13 @@ interface ContentRendererProps {
 }
 
 export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
-  if (!blocks || blocks.length === 0) return null;
+  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return null;
 
   return (
     <div className="space-y-4">
       {blocks.map((block, index) => {
+        if (!block) return null;
+        
         switch (block.type) {
           case "heading":
             const Tag = `h${block.level}` as "h1" | "h2" | "h3";
@@ -30,6 +32,7 @@ export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
               </p>
             );
           case "checklist":
+            if (!block.items || !Array.isArray(block.items)) return null;
             return (
               <ChecklistBlock
                 key={index}
@@ -39,6 +42,8 @@ export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
               />
             );
           case "table":
+            if (!block.headers || !Array.isArray(block.headers)) return null;
+            if (!block.rows || !Array.isArray(block.rows)) return null;
             return (
               <div key={index} className="overflow-x-auto rounded-md border border-border">
                 <table className="w-full text-sm">
@@ -52,15 +57,18 @@ export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {block.rows.map((row, ri) => (
-                      <tr key={ri} className="border-t border-border">
-                        {row.map((cell, ci) => (
-                          <td key={ci} className="px-3 py-2">
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {block.rows.map((row, ri) => {
+                      if (!Array.isArray(row)) return null;
+                      return (
+                        <tr key={ri} className="border-t border-border">
+                          {row.map((cell, ci) => (
+                            <td key={ci} className="px-3 py-2">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
