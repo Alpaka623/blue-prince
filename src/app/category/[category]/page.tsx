@@ -75,8 +75,8 @@ export default function CategoryPage({
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${cat.color}`}>
-            <cat.icon className="w-6 h-6" />
+          <div className={`p-2 rounded-lg ${cat.color} flex items-center justify-center min-w-10 h-10`}>
+            {cat.icon && <cat.icon className="w-6 h-6" />}
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{cat.label}</h1>

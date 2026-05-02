@@ -163,6 +163,7 @@ export default function UploadPage() {
         tags: aiResult.tags || [],
         customContent: aiResult.customContent || [],
         aiRawResponse: JSON.stringify(aiResult),
+        order: Date.now(),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       };

@@ -43,7 +43,7 @@ export function CategoryFilter({ selected, onSelect, counts }: CategoryFilterPro
                 selected === key && "text-primary"
               )}
             >
-              <config.icon className="w-3.5 h-3.5" />
+              {config.icon && <config.icon className="w-3.5 h-3.5" />}
               {config.label}
               <span className="text-xs text-muted-foreground ml-0.5">
                 {count}

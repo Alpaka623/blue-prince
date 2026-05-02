@@ -5,12 +5,11 @@ import {
   Puzzle,
   StickyNote,
   ClipboardCheck,
-  HelpCircle,
 } from "lucide-react";
 
 export const CATEGORIES: Record<
   string,
-  { label: string; icon: typeof DoorOpen; color: string }
+  { label: string; icon?: typeof DoorOpen; color: string }
 > = {
   allgemein: { label: "Allgemein", icon: StickyNote, color: "bg-gray-900/50 text-gray-300 border-gray-700" },
 };
@@ -26,5 +25,5 @@ export function getCategoryConfig(category: string) {
   if (lower.includes("item") || lower.includes("objekt")) return { label: category, icon: Package, color: "bg-zinc-900/50 text-zinc-300 border-zinc-700" };
   if (lower.includes("rätsel") || lower.includes("puzzle")) return { label: category, icon: Puzzle, color: "bg-purple-900/50 text-purple-300 border-purple-700" };
   
-  return { label: category, icon: HelpCircle, color: "bg-gray-800/50 text-gray-300 border-gray-600" };
+  return { label: category, icon: undefined, color: "bg-gray-800/50 text-gray-300 border-gray-600" };
 }

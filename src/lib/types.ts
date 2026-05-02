@@ -28,6 +28,7 @@ export interface Finding {
   room?: string;
   customPrompt?: string;
   aiRawResponse?: string;
+  order?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

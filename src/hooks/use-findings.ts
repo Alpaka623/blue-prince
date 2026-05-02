@@ -8,6 +8,8 @@ import {
   orderBy,
   doc,
   updateDoc,
+  writeBatch,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Finding } from "@/lib/types";
@@ -17,9 +19,10 @@ export function useFindings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Primary sort by order (manual), secondary by creation date
     const q = query(
       collection(db, "findings"),
-      orderBy("createdAt", "desc")
+      orderBy("order", "desc")
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -64,4 +67,35 @@ export async function updateFinding(
     ...data,
     updatedAt: new Date(),
   });
+}
+
+export async function updateFindingsOrder(updates: { id: string; order: number }[]) {
+  const batch = writeBatch(db);
+  updates.forEach(({ id, order }) => {
+    const docRef = doc(db, "findings", id);
+    batch.update(docRef, { order, updatedAt: new Date() });
+  });
+  await batch.commit();
+}
+
+export function useSettings() {
+  const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, "settings", "general"), (snapshot) => {
+      if (snapshot.exists()) {
+        setCategoryOrder(snapshot.data().categoryOrder || []);
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  return { categoryOrder, loading };
+}
+
+export async function updateCategoryOrder(order: string[]) {
+  await setDoc(doc(db, "settings", "general"), { categoryOrder: order }, { merge: true });
 }

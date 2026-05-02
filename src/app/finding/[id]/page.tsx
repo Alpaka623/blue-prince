@@ -260,8 +260,8 @@ export default function FindingPage({
           <div className="flex flex-col gap-3">
             {/* Category — now fully editable as text */}
             <div className="flex items-center gap-2">
-              <div className={`p-1.5 rounded ${cat.color}`}>
-                <cat.icon className="w-4 h-4" />
+              <div className={`p-1.5 rounded ${cat.color} flex items-center justify-center min-w-7 h-7`}>
+                {cat.icon && <cat.icon className="w-4 h-4" />}
               </div>
               <EditableField
                 value={finding.category}

@@ -30,7 +30,7 @@ export function FindingCard({ finding }: { finding: Finding }) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className={cat.color}>
-              <cat.icon className="w-3 h-3 mr-1" />
+              {cat.icon && <cat.icon className="w-3 h-3 mr-1" />}
               {cat.label}
             </Badge>
             {Array.isArray(finding.tags) && finding.tags.slice(0, 2).map((tag) => (

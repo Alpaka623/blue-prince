@@ -1,72 +1,106 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableCategoryCard } from "./sortable-category-card";
 import { getCategoryConfig } from "@/lib/categories";
-import type { Finding, FindingCategory } from "@/lib/types";
-import { ChevronRight } from "lucide-react";
+import type { Finding } from "@/lib/types";
+import { useSettings, updateCategoryOrder } from "@/hooks/use-findings";
 
 interface CategoryGridProps {
   findings: Finding[];
 }
 
 export function CategoryGrid({ findings }: CategoryGridProps) {
-  // Get all unique categories from findings, with safety check
-  const uniqueCategories = Array.from(new Set((findings || []).map(f => f.category)));
-  
-  const categoryGroups = uniqueCategories.map((cat) => {
-    const items = findings.filter((f) => f.category === cat);
+  const { categoryOrder, loading: settingsLoading } = useSettings();
+  const [items, setItems] = useState<string[]>([]);
+
+  // Calculate unique categories and merge with global order
+  useEffect(() => {
+    const uniqueCategories = Array.from(new Set((findings || []).map(f => f.category)));
+    
+    // Sort based on global categoryOrder, then append new ones
+    const sorted = [...categoryOrder];
+    
+    // Remove categories from order that no longer exist in findings
+    const existing = sorted.filter(cat => uniqueCategories.includes(cat));
+    
+    // Add new categories that are not yet in the order
+    const newOnes = uniqueCategories.filter(cat => !existing.includes(cat));
+    
+    setItems([...existing, ...newOnes]);
+  }, [findings, categoryOrder]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = items.indexOf(active.id as string);
+      const newIndex = items.indexOf(over.id as string);
+
+      const newItems = arrayMove(items, oldIndex, newIndex);
+      setItems(newItems);
+
+      try {
+        await updateCategoryOrder(newItems);
+      } catch (error) {
+        console.error("Failed to save category order:", error);
+      }
+    }
+  }
+
+  if (settingsLoading) return null;
+
+  const categoryGroups = items.map((cat) => {
+    const groupItems = findings.filter((f) => f.category === cat);
     return {
       key: cat,
       config: getCategoryConfig(cat),
-      items,
+      items: groupItems,
     };
-  });
+  }).filter(g => g.items.length > 0);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {categoryGroups.map((group) => (
-        <Link key={group.key} href={`/category/${group.key}`}>
-          <Card className="overflow-hidden hover:border-primary/50 transition-colors group cursor-pointer h-full">
-            {/* Collage Preview */}
-            <div className="relative h-40 bg-muted flex overflow-hidden">
-              {group.items.slice(0, 3).map((item) => (
-                <div
-                  key={item.id}
-                  className="relative flex-1 h-full border-r border-background last:border-r-0"
-                >
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 768px) 33vw, 15vw"
-                  />
-                </div>
-              ))}
-              {group.items.length === 0 && (
-                <div className="flex items-center justify-center w-full text-muted-foreground text-sm">
-                  Keine Funde
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                <div className={`p-1.5 rounded-md ${group.config.color}`}>
-                  <group.config.icon className="w-4 h-4" />
-                </div>
-                <span className="text-white font-semibold">{group.config.label}</span>
-              </div>
-            </div>
-            <CardContent className="p-4 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {group.items.length} {group.items.length === 1 ? "Fund" : "Funde"}
-              </span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </CardContent>
-          </Card>
-        </Link>
-      ))}
-    </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={items} strategy={rectSortingStrategy}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {categoryGroups.map((group) => (
+            <SortableCategoryCard
+              key={group.key}
+              id={group.key}
+              config={group.config}
+              items={group.items}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 }
