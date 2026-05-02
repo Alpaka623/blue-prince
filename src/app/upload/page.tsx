@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, ImagePlus, Loader2, Sparkles } from "lucide-react";
+import { Camera, DoorClosed, ImagePlus, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 
@@ -20,6 +21,7 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
+  const [room, setRoom] = useState("");
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -92,6 +94,7 @@ export default function UploadPage() {
         imagePath,
         title: aiResult.title,
         category: aiResult.category,
+        room: room.trim() || "",
         description: aiResult.description || "",
         extractedText: aiResult.extractedText || "",
         tags: aiResult.tags || [],
@@ -183,6 +186,19 @@ export default function UploadPage() {
             </Button>
           </div>
         )}
+
+        <div className="space-y-2">
+          <Label htmlFor="room" className="flex items-center gap-1.5">
+            <DoorClosed className="w-4 h-4 text-muted-foreground" />
+            Raum / Fundort <span className="text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <Input
+            id="room"
+            placeholder='z.B. "Bibliothek"'
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+          />
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="prompt" className="flex items-center gap-2">

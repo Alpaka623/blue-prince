@@ -34,6 +34,7 @@ const FindingOutputSchema = z.object({
   title: z.string(),
   category: z.string(),
   description: z.string().optional(),
+  room: z.string().optional(),
   extractedText: z.string().optional(),
   tags: z.array(z.string()),
   customContent: z.array(CustomContentBlockSchema).optional(),

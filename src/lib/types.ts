@@ -25,6 +25,7 @@ export interface Finding {
   tags: string[];
   customContent?: CustomContentBlock[];
   notes?: string;
+  room?: string;
   customPrompt?: string;
   aiRawResponse?: string;
   createdAt: Timestamp;

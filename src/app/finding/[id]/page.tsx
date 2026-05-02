@@ -2,7 +2,6 @@
 
 import { use, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useFinding, updateFinding } from "@/hooks/use-findings";
 import { EditableField } from "@/components/findings/editable-field";
 import { ContentRenderer } from "@/components/findings/content-renderer";
@@ -10,13 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getCategoryConfig, CATEGORIES } from "@/lib/categories";
 import {
   ArrowLeft,
@@ -28,6 +20,7 @@ import {
   ZoomOut,
   RotateCcw,
   NotebookPen,
+  DoorClosed,
 } from "lucide-react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -264,45 +257,40 @@ export default function FindingPage({
             className="text-xl font-bold"
           />
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <Select
-              value={finding.category}
-              onValueChange={(v) =>
-                updateFinding(finding.id, { category: v ?? undefined })
-              }
-            >
-              <SelectTrigger className="w-fit">
-                <SelectValue>
-                  <Badge variant="outline" className={cat.color}>
-                    <cat.icon className="w-3 h-3 mr-1" />
-                    {cat.label}
-                  </Badge>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CATEGORIES).map(([key, { label, icon: Icon }]) => (
-                  <SelectItem key={key} value={key}>
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </div>
-                  </SelectItem>
-                ))}
-                {!CATEGORIES[finding.category] && (
-                  <SelectItem value={finding.category}>
-                    <div className="flex items-center gap-2">
-                      <cat.icon className="w-3.5 h-3.5" />
-                      {finding.category}
-                    </div>
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            {finding.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
+          <div className="flex flex-col gap-3">
+            {/* Category — now fully editable as text */}
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded ${cat.color}`}>
+                <cat.icon className="w-4 h-4" />
+              </div>
+              <EditableField
+                value={finding.category}
+                onSave={(category) => updateFinding(finding.id, { category })}
+                className="text-sm font-medium"
+                placeholder="Kategorie..."
+              />
+            </div>
+
+            {/* Room — new editable field */}
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded bg-muted">
+                <DoorClosed className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <EditableField
+                value={finding.room || ""}
+                onSave={(room) => updateFinding(finding.id, { room })}
+                className="text-sm text-muted-foreground"
+                placeholder="Raum hinzufügen..."
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              {finding.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
 
           <Separator />
