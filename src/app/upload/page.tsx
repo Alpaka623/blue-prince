@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,12 +19,6 @@ export default function UploadPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [uploadedBy, setUploadedBy] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("bp-wiki-name") || "";
-    }
-    return "";
-  });
   const [customPrompt, setCustomPrompt] = useState("");
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState("");
@@ -41,9 +34,6 @@ export default function UploadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) return;
-
-    const name = uploadedBy.trim() || undefined;
-    if (name) localStorage.setItem("bp-wiki-name", name);
 
     setUploading(true);
 
@@ -102,12 +92,10 @@ export default function UploadPage() {
         imagePath,
         title: aiResult.title,
         category: aiResult.category,
-        description: aiResult.description,
+        description: aiResult.description || "",
         extractedText: aiResult.extractedText || "",
         tags: aiResult.tags || [],
         customContent: aiResult.customContent || [],
-        uploadedBy: name || null,
-        customPrompt: customPrompt || "",
         aiRawResponse: JSON.stringify(aiResult),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -197,25 +185,12 @@ export default function UploadPage() {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="name" className="flex items-center gap-1.5">
-            Dein Name <span className="text-muted-foreground font-normal">(optional)</span>
-          </Label>
-          <Input
-            id="name"
-            placeholder="z.B. Max"
-            value={uploadedBy}
-            onChange={(e) => setUploadedBy(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="prompt" className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
             KI-Anweisung (optional)
           </Label>
           <Textarea
             id="prompt"
-            placeholder='z.B. "Das sind Blätter aus dem Final Exam. Lege Checkboxen an, damit wir ankreuzen können was richtig ist."'
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             rows={3}

@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Upload, Home, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Upload, Home, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 const NAV_ITEMS = [
   { href: "/", label: "Funde", icon: Home },
@@ -14,7 +20,6 @@ const NAV_ITEMS = [
 
 export function Header() {
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -42,34 +47,39 @@ export function Header() {
           ))}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="sm:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </Button>
+        <div className="sm:hidden">
+          <Sheet>
+            <SheetTrigger
+              render={
+                <Button variant="ghost" size="sm">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              }
+            />
+            <SheetContent side="right" className="pt-10">
+              <SheetHeader className="text-left px-6">
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <nav className="px-4 py-4 space-y-1">
+                {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+                  <Link key={href} href={href}>
+                    <Button
+                      variant={pathname === href ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start gap-2",
+                        pathname === href && "text-primary"
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Button>
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
-
-      {menuOpen && (
-        <nav className="sm:hidden border-t border-border px-4 py-2 space-y-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} onClick={() => setMenuOpen(false)}>
-              <Button
-                variant={pathname === href ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start gap-2",
-                  pathname === href && "text-primary"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Button>
-            </Link>
-          ))}
-        </nav>
-      )}
     </header>
   );
 }

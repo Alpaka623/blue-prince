@@ -15,7 +15,6 @@ export function ChecklistBlock({ block, blockIndex, findingId }: ChecklistBlockP
   async function toggleItem(itemIndex: number) {
     const docRef = doc(db, "findings", findingId);
     const newChecked = !block.items[itemIndex].checked;
-    const fieldPath = `customContent.${blockIndex}.items.${itemIndex}.checked`;
 
     // Firestore doesn't support array-index field paths, so we update the whole customContent
     // We need to read the current block, modify it, and write back

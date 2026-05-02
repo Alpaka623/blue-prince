@@ -12,6 +12,7 @@ interface EditableFieldProps {
   multiline?: boolean;
   className?: string;
   placeholder?: string;
+  preview?: React.ReactNode;
 }
 
 export function EditableField({
@@ -20,6 +21,7 @@ export function EditableField({
   multiline = false,
   className = "",
   placeholder = "Klicke zum Bearbeiten...",
+  preview,
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -80,10 +82,10 @@ export function EditableField({
       onClick={() => setEditing(true)}
     >
       <div className="flex items-start gap-2">
-        <span className={`flex-1 ${!value ? "text-muted-foreground italic" : ""}`}>
-          {value || placeholder}
-        </span>
-        <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />
+        <div className={`flex-1 ${!value ? "text-muted-foreground italic" : ""}`}>
+          {preview || value || placeholder}
+        </div>
+        <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1 shrink-0" />
       </div>
     </div>
   );

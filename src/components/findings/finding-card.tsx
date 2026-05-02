@@ -4,11 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORIES } from "@/lib/categories";
+import { getCategoryConfig } from "@/lib/categories";
 import type { Finding } from "@/lib/types";
 
 export function FindingCard({ finding }: { finding: Finding }) {
-  const cat = CATEGORIES[finding.category];
+  const cat = getCategoryConfig(finding.category);
 
   return (
     <Link href={`/finding/${finding.id}`}>
@@ -42,11 +42,6 @@ export function FindingCard({ finding }: { finding: Finding }) {
           {finding.description && (
             <p className="text-xs text-muted-foreground line-clamp-2">
               {finding.description}
-            </p>
-          )}
-          {finding.uploadedBy && (
-            <p className="text-xs text-muted-foreground/60">
-              von {finding.uploadedBy}
             </p>
           )}
         </CardContent>

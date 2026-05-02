@@ -32,11 +32,8 @@ const CustomContentBlockSchema = z.union([
 
 const FindingOutputSchema = z.object({
   title: z.string(),
-  category: z.enum([
-    "room", "item", "document", "puzzle", "clue",
-    "character", "map", "exam", "note", "other",
-  ]),
-  description: z.string(),
+  category: z.string(),
+  description: z.string().optional(),
   extractedText: z.string().optional(),
   tags: z.array(z.string()),
   customContent: z.array(CustomContentBlockSchema).optional(),

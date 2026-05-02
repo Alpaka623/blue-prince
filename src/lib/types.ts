@@ -1,16 +1,6 @@
 import type { Timestamp } from "firebase/firestore";
 
-export type FindingCategory =
-  | "room"
-  | "item"
-  | "document"
-  | "puzzle"
-  | "clue"
-  | "character"
-  | "map"
-  | "exam"
-  | "note"
-  | "other";
+export type FindingCategory = string;
 
 export interface ChecklistItem {
   id: string;
@@ -34,7 +24,6 @@ export interface Finding {
   extractedText?: string;
   tags: string[];
   customContent?: CustomContentBlock[];
-  uploadedBy?: string;
   notes?: string;
   customPrompt?: string;
   aiRawResponse?: string;

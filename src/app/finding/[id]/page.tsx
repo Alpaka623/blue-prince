@@ -17,13 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CATEGORIES } from "@/lib/categories";
-import type { FindingCategory } from "@/lib/types";
+import { getCategoryConfig, CATEGORIES } from "@/lib/categories";
 import {
   ArrowLeft,
   Loader2,
   FileText,
-  Sparkles,
   Tag,
   Trash2,
   ZoomIn,
@@ -35,6 +33,8 @@ import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function FindingPage({
   params,
@@ -46,6 +46,9 @@ export default function FindingPage({
   const { finding, loading } = useFinding(id);
   const [imageOpen, setImageOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const imgContainerRef = useRef<HTMLDivElement>(null);
 
   if (loading) {
@@ -67,7 +70,7 @@ export default function FindingPage({
     );
   }
 
-  const cat = CATEGORIES[finding.category];
+  const cat = getCategoryConfig(finding.category);
 
   async function handleDelete() {
     if (!finding) return;
@@ -87,31 +90,81 @@ export default function FindingPage({
   }
 
   function handleWheel(e: React.WheelEvent) {
-    e.preventDefault();
-    setZoom((z) => Math.min(5, Math.max(0.5, z - e.deltaY * 0.001)));
+    const zoomSpeed = 0.0005;
+    setZoom((z) => {
+      // Use a more granular approach for the initial zoom
+      const factor = 1 - e.deltaY * zoomSpeed;
+      const newZoom = z * factor;
+      // Strictly limit minimum zoom to 1.0
+      const clampedZoom = Math.min(5, Math.max(1, newZoom));
+      
+      // If we are zooming back to near 1, reset the offset to center the image
+      if (clampedZoom <= 1.01) {
+        setOffset({ x: 0, y: 0 });
+      }
+      
+      return clampedZoom;
+    });
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    if (zoom <= 1.01) return; // Allow small margin for zoom
+    setIsDragging(true);
+    setStartPos({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!isDragging) return;
+    setOffset({
+      x: e.clientX - startPos.x,
+      y: e.clientY - startPos.y,
+    });
+  }
+
+  function handleMouseUp() {
+    setIsDragging(false);
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (zoom <= 1 || e.touches.length !== 1) return;
+    setIsDragging(true);
+    const touch = e.touches[0];
+    setStartPos({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    if (!isDragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    setOffset({
+      x: touch.clientX - startPos.x,
+      y: touch.clientY - startPos.y,
+    });
+  }
+
+  function resetZoom() {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
+      <Button variant="ghost" size="sm" onClick={() => router.back()}>
         <ArrowLeft className="w-4 h-4 mr-2" /> Zurück
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Image */}
-        <Dialog open={imageOpen} onOpenChange={(open) => { setImageOpen(open); if (!open) setZoom(1); }}>
+        <Dialog open={imageOpen} onOpenChange={(open) => { setImageOpen(open); if (!open) resetZoom(); }}>
           <DialogTrigger
-            className="overflow-hidden cursor-zoom-in group rounded-lg border border-border"
+            className="overflow-hidden cursor-zoom-in group rounded-lg border border-border w-full bg-muted/30"
             onClick={() => setImageOpen(true)}
           >
-            <div className="relative aspect-video">
-              <Image
+            <div className="relative w-full flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={finding.imageUrl}
                 alt={finding.title}
-                fill
-                className="object-contain bg-black/20 group-hover:brightness-110 transition-all"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                priority
+                className="w-full h-auto max-h-[60vh] object-contain group-hover:brightness-110 transition-all"
               />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <div className="bg-black/60 rounded-full p-2">
@@ -123,37 +176,52 @@ export default function FindingPage({
           <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] p-0 flex flex-col overflow-hidden">
             {/* Zoom controls */}
             <div className="flex items-center gap-2 p-2 border-b border-border bg-background/80 shrink-0">
-              <Button size="sm" variant="ghost" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}>
+              <Button size="sm" variant="ghost" onClick={() => {
+                setZoom((z) => {
+                  const next = Math.max(1, z - 0.1);
+                  if (next <= 1.01) setOffset({ x: 0, y: 0 });
+                  return next;
+                });
+              }}>
                 <ZoomOut className="w-4 h-4" />
               </Button>
               <span className="text-xs text-muted-foreground w-12 text-center">
                 {Math.round(zoom * 100)}%
               </span>
-              <Button size="sm" variant="ghost" onClick={() => setZoom((z) => Math.min(5, z + 0.25))}>
+              <Button size="sm" variant="ghost" onClick={() => setZoom((z) => Math.min(5, z + 0.1))}>
                 <ZoomIn className="w-4 h-4" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setZoom(1)}>
+              <Button size="sm" variant="ghost" onClick={resetZoom}>
                 <RotateCcw className="w-4 h-4" />
               </Button>
             </div>
             {/* Scrollable image container */}
             <div
               ref={imgContainerRef}
-              className="flex-1 overflow-auto flex items-center justify-center bg-black/50"
+              className="flex-1 overflow-hidden flex items-center justify-center bg-black/50 select-none touch-none relative"
               onWheel={handleWheel}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleMouseUp}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={finding.imageUrl}
                 alt={finding.title}
                 style={{
-                  transform: `scale(${zoom})`,
+                  transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
                   transformOrigin: "center center",
-                  transition: "transform 0.1s ease",
-                  maxWidth: zoom <= 1 ? "100%" : "none",
-                  maxHeight: zoom <= 1 ? "100%" : "none",
-                  cursor: zoom > 1 ? "grab" : "zoom-in",
+                  transition: isDragging ? "none" : "transform 0.1s ease",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  cursor: zoom > 1.01 ? (isDragging ? "grabbing" : "grab") : "zoom-in",
                 }}
+                draggable={false}
               />
             </div>
           </DialogContent>
@@ -171,7 +239,7 @@ export default function FindingPage({
             <Select
               value={finding.category}
               onValueChange={(v) =>
-                updateFinding(finding.id, { category: v as FindingCategory })
+                updateFinding(finding.id, { category: v ?? undefined })
               }
             >
               <SelectTrigger className="w-fit">
@@ -191,6 +259,14 @@ export default function FindingPage({
                     </div>
                   </SelectItem>
                 ))}
+                {!CATEGORIES[finding.category] && (
+                  <SelectItem value={finding.category}>
+                    <div className="flex items-center gap-2">
+                      <cat.icon className="w-3.5 h-3.5" />
+                      {finding.category}
+                    </div>
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
             {finding.tags.map((tag) => (
@@ -218,18 +294,25 @@ export default function FindingPage({
           )}
 
           {/* Description — secondary */}
-          <div>
-            <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5" /> KI-Beschreibung
-            </h3>
-            <EditableField
-              value={finding.description}
-              onSave={(description) => updateFinding(finding.id, { description })}
-              multiline
-              placeholder="Keine Beschreibung..."
-              className="text-sm text-muted-foreground"
-            />
-          </div>
+          {finding.description && (
+            <div>
+              <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5" /> KI-Beschreibung
+              </h3>
+              <EditableField
+                value={finding.description}
+                onSave={(description) => updateFinding(finding.id, { description })}
+                multiline
+                preview={
+                  <div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {finding.description}
+                    </ReactMarkdown>
+                  </div>
+                }
+              />
+            </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -240,20 +323,18 @@ export default function FindingPage({
               value={finding.notes || ""}
               onSave={(notes) => updateFinding(finding.id, { notes })}
               multiline
-              placeholder="Eigene Notizen hinzufügen..."
+              placeholder="Eigene Notizen hinzufügen (Markdown unterstützt)..."
+              preview={
+                finding.notes ? (
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {finding.notes}
+                    </ReactMarkdown>
+                  </div>
+                ) : undefined
+              }
             />
           </div>
-
-          {finding.customPrompt && (
-            <div>
-              <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-primary" /> KI-Anweisung
-              </h3>
-              <p className="text-xs text-muted-foreground italic">
-                &quot;{finding.customPrompt}&quot;
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
