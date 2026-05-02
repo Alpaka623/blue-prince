@@ -83,6 +83,7 @@ export default function UploadPage() {
 
       let aiResult;
       try {
+        console.log("Starting AI analysis request...");
         const response = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -95,13 +96,28 @@ export default function UploadPage() {
 
         if (response.ok) {
           aiResult = await response.json();
+          console.log("AI analysis successful:", aiResult);
         } else {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "AI analysis failed");
+          const status = response.status;
+          const statusText = response.statusText;
+          let errorMessage = "Unbekannter Fehler";
+          try {
+            const errData = await response.json();
+            errorMessage = errData.error || errorMessage;
+          } catch {
+            // fallback if not JSON
+          }
+          console.error(`AI API Error (${status}): ${statusText}`, errorMessage);
+          throw new Error(`KI-Dienst meldet Fehler (${status}): ${errorMessage}`);
         }
-      } catch (err: unknown) {
-        console.error("AI Analysis Error:", err);
-        toast.error("KI-Analyse fehlgeschlagen — Fund wird ohne KI-Daten gespeichert.");
+      } catch (err: any) {
+        console.error("Critical AI Analysis Error:", err);
+        const isTimeout = err.name === "AbortError" || err.message?.includes("fetch");
+        const msg = isTimeout 
+          ? "Die KI-Analyse hat zu lange gedauert (Timeout). Der Fund wird ohne Analyse gespeichert."
+          : `KI-Analyse fehlgeschlagen: ${err.message}. Speichere ohne KI-Daten.`;
+        
+        toast.error(msg);
         aiResult = {
           title: file.name.replace(/\.[^.]+$/, ""),
           category: "allgemein",
@@ -111,6 +127,7 @@ export default function UploadPage() {
       }
 
       setStatus("Fund wird gespeichert...");
+      console.log("Saving to Firestore...");
       const docRef = await addDoc(collection(db, "findings"), {
         imageUrl,
         imagePath,
@@ -125,6 +142,7 @@ export default function UploadPage() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
+      console.log("Firestore save successful, ID:", docRef.id);
 
       toast.success("Fund erfolgreich hochgeladen!");
       router.push(`/finding/${docRef.id}`);
