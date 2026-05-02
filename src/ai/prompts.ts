@@ -9,13 +9,16 @@ Deine Standardaufgabe (wenn keine besonderen Anweisungen gegeben werden):
 
 Antworte auf Deutsch. Sei bei der Textextraktion präzise und originalgetreu.`;
 
-export function buildAnalysisPrompt(customPrompt?: string): string {
-  if (!customPrompt) {
-    return "Extrahiere den Text aus diesem Bild aus dem Spiel Blue Prince. Bewahre die originale Formatierung (Zeilenumbrüche, Einrückungen, Spalten).";
+export function buildAnalysisPrompt(customPrompt?: string, existingCategories?: string[]): string {
+  let prompt = "Analysiere dieses Bild aus dem Spiel Blue Prince.";
+  
+  if (existingCategories && existingCategories.length > 0) {
+    prompt += `\n\nBestehende Kategorien: ${existingCategories.join(", ")}. BITTE nutze vorrangig eine dieser Kategorien, falls sie auch nur ansatzweise passt. Erstelle nur eine neue Kategorie, wenn es absolut notwendig ist.`;
   }
-  return `Analysiere dieses Bild aus dem Spiel Blue Prince.
 
-Zusätzliche Anweisung: "${customPrompt}"
+  if (!customPrompt) {
+    return prompt;
+  }
 
-Befolge diese Anweisung. Wenn nach Checkboxen/Checklisten gefragt wird, gib sie als customContent-Blöcke mit type "checklist" aus. Wenn nach Tabellen gefragt wird, verwende type "table".`;
+  return `${prompt}\n\nZusätzliche Anweisung: "${customPrompt}"\n\nBefolge diese Anweisung. Wenn nach Checkboxen/Checklisten gefragt wird, gib sie als customContent-Blöcke mit type "checklist" aus. Wenn nach Tabellen gefragt wird, verwende type "table".`;
 }

@@ -12,9 +12,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Camera, DoorClosed, ImagePlus, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useFindings } from "@/hooks/use-findings";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { findings } = useFindings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +54,8 @@ export default function UploadPage() {
 
       setStatus("KI analysiert das Bild...");
       
+      const existingCategories = Array.from(new Set(findings.map(f => f.category)));
+
       // Compress and resize image for AI (max 1600px)
       const imageBase64 = await new Promise<string>((resolve, reject) => {
         const img = new window.Image();
@@ -91,6 +95,7 @@ export default function UploadPage() {
             imageBase64,
             mimeType: "image/jpeg",
             customPrompt: customPrompt || undefined,
+            existingCategories,
           }),
         });
 

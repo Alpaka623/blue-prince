@@ -49,6 +49,7 @@ export const analyzeFinding = ai.defineFlow(
       imageBase64: z.string(),
       mimeType: z.string(),
       customPrompt: z.string().optional(),
+      existingCategories: z.array(z.string()).optional(),
     }),
     outputSchema: FindingOutputSchema,
   },
@@ -63,7 +64,7 @@ export const analyzeFinding = ai.defineFlow(
             url: `data:${input.mimeType};base64,${input.imageBase64}`,
           },
         },
-        { text: buildAnalysisPrompt(input.customPrompt) },
+        { text: buildAnalysisPrompt(input.customPrompt, input.existingCategories) },
       ],
       output: { schema: FindingOutputSchema },
     });
