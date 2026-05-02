@@ -128,7 +128,31 @@ export default function UploadPage() {
 
       setStatus("Fund wird gespeichert...");
       console.log("Saving to Firestore...");
-      const docRef = await addDoc(collection(db, "findings"), {
+
+      // Helper to sanitize data for Firestore (remove nested arrays)
+      const sanitizeForFirestore = (obj: any): any => {
+        if (Array.isArray(obj)) {
+          return obj.map(v => sanitizeForFirestore(v));
+        } else if (obj !== null && typeof obj === 'object') {
+          const sanitized: any = {};
+          for (const key in obj) {
+            // Firestore doesn't like nested arrays. 
+            // If the value is an array, we ensure its children are not arrays.
+            if (Array.isArray(obj[key])) {
+              sanitized[key] = obj[key].map((item: any) => {
+                if (Array.isArray(item)) return JSON.stringify(item); // Flatten nested arrays
+                return sanitizeForFirestore(item);
+              });
+            } else {
+              sanitized[key] = sanitizeForFirestore(obj[key]);
+            }
+          }
+          return sanitized;
+        }
+        return obj;
+      };
+
+      const rawData = {
         imageUrl,
         imagePath,
         title: aiResult.title,
@@ -141,7 +165,10 @@ export default function UploadPage() {
         aiRawResponse: JSON.stringify(aiResult),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-      });
+      };
+
+      const sanitizedData = sanitizeForFirestore(rawData);
+      const docRef = await addDoc(collection(db, "findings"), sanitizedData);
       console.log("Firestore save successful, ID:", docRef.id);
 
       toast.success("Fund erfolgreich hochgeladen!");
