@@ -51,15 +51,35 @@ export default function UploadPage() {
       const { imageUrl, imagePath } = await uploadResponse.json();
 
       setStatus("KI analysiert das Bild...");
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
+      
+      // Compress and resize image for AI (max 1600px)
+      const imageBase64 = await new Promise<string>((resolve, reject) => {
+        const img = new window.Image();
+        img.src = preview!;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          const maxSide = 1600;
+
+          if (width > maxSide || height > maxSide) {
+            if (width > height) {
+              height = (height / width) * maxSide;
+              width = maxSide;
+            } else {
+              width = (width / height) * maxSide;
+              height = maxSide;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
         };
+        img.onerror = reject;
       });
-      reader.readAsDataURL(file);
-      const imageBase64 = await base64Promise;
 
       let aiResult;
       try {
@@ -68,7 +88,7 @@ export default function UploadPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             imageBase64,
-            mimeType: file.type,
+            mimeType: "image/jpeg",
             customPrompt: customPrompt || undefined,
           }),
         });
@@ -76,13 +96,15 @@ export default function UploadPage() {
         if (response.ok) {
           aiResult = await response.json();
         } else {
-          throw new Error("AI analysis failed");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "AI analysis failed");
         }
-      } catch {
+      } catch (err: unknown) {
+        console.error("AI Analysis Error:", err);
         toast.error("KI-Analyse fehlgeschlagen — Fund wird ohne KI-Daten gespeichert.");
         aiResult = {
           title: file.name.replace(/\.[^.]+$/, ""),
-          category: "other",
+          category: "allgemein",
           description: "",
           tags: [],
         };
