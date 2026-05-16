@@ -55,7 +55,7 @@ export const analyzeFinding = ai.defineFlow(
   },
   async (input) => {
     const response = await ai.generate({
-      model: "googleai/gemini-3.1-flash-lite-preview",
+      model: "googleai/gemini-3.1-flash-lite",
       system: SYSTEM_PROMPT,
       prompt: [
         {
