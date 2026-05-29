@@ -2,13 +2,16 @@ import type { BoardSession } from "@/lib/sessions";
 
 export const SESSION_STORAGE_KEY = "bp-wiki-session";
 
-export function readStoredSession(): BoardSession | null {
+export function readStoredSessionValue() {
   if (typeof window === "undefined") return null;
 
-  const stored =
+  return (
     window.localStorage.getItem(SESSION_STORAGE_KEY) ||
-    window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    window.sessionStorage.getItem(SESSION_STORAGE_KEY)
+  );
+}
 
+export function parseStoredSession(stored: string | null): BoardSession | null {
   if (!stored) return null;
 
   try {
@@ -18,6 +21,10 @@ export function readStoredSession(): BoardSession | null {
     clearStoredSession();
     return null;
   }
+}
+
+export function readStoredSession(): BoardSession | null {
+  return parseStoredSession(readStoredSessionValue());
 }
 
 export function writeStoredSession(session: BoardSession, remember: boolean) {

@@ -14,11 +14,13 @@ import { normalizeInviteCode } from "@/lib/sessions";
 import {
   createBoardSession,
   ensureLegacyBoardSession,
+  getLegacyInviteCode,
   joinBoardSession,
 } from "@/lib/session-firestore";
 import {
   clearStoredSession,
-  readStoredSession,
+  parseStoredSession,
+  readStoredSessionValue,
   writeStoredSession,
 } from "@/lib/session-storage";
 
@@ -33,10 +35,14 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const storedSession = useSyncExternalStore(
+  const storedSessionValue = useSyncExternalStore(
     () => () => {},
-    readStoredSession,
+    readStoredSessionValue,
     () => null
+  );
+  const storedSession = useMemo(
+    () => parseStoredSession(storedSessionValue),
+    [storedSessionValue]
   );
   const [currentSession, setCurrentSession] = useState<BoardSession | null>(null);
   const activeSession = currentSession ?? storedSession;
@@ -50,7 +56,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const joinSession = useCallback(async (inviteCode: string, remember: boolean) => {
     const code = normalizeInviteCode(inviteCode);
-    const session = await joinBoardSession(code);
+    let session: BoardSession;
+
+    try {
+      session = await joinBoardSession(code);
+    } catch (error) {
+      if (code !== getLegacyInviteCode()) {
+        throw error;
+      }
+
+      await ensureLegacyBoardSession();
+      session = await joinBoardSession(code);
+    }
+
     writeStoredSession(session, remember);
     setCurrentSession(session);
   }, []);
