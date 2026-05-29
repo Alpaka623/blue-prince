@@ -12,6 +12,11 @@ import {
 import type { BoardSession } from "@/lib/sessions";
 import { normalizeInviteCode } from "@/lib/sessions";
 import {
+  createBoardSession,
+  ensureLegacyBoardSession,
+  joinBoardSession,
+} from "@/lib/session-firestore";
+import {
   clearStoredSession,
   readStoredSession,
   writeStoredSession,
@@ -37,36 +42,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const activeSession = currentSession ?? storedSession;
 
   useEffect(() => {
-    fetch("/api/sessions/ensure-legacy", { method: "POST" }).catch(() => {
+    ensureLegacyBoardSession().catch((error) => {
+      console.error("Legacy migration failed:", error);
       // Best-effort migration. Joining and creating boards should still work.
     });
   }, []);
 
   const joinSession = useCallback(async (inviteCode: string, remember: boolean) => {
     const code = normalizeInviteCode(inviteCode);
-    const response = await fetch("/api/sessions/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode: code }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Session nicht gefunden.");
-    }
-
-    const session = (await response.json()) as BoardSession;
+    const session = await joinBoardSession(code);
     writeStoredSession(session, remember);
     setCurrentSession(session);
   }, []);
 
   const createSession = useCallback(async (remember: boolean) => {
-    const response = await fetch("/api/sessions/create", { method: "POST" });
-
-    if (!response.ok) {
-      throw new Error("Session konnte nicht erstellt werden.");
-    }
-
-    const session = (await response.json()) as BoardSession;
+    const session = await createBoardSession();
     writeStoredSession(session, remember);
     setCurrentSession(session);
     return session;
