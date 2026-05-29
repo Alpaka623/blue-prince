@@ -10,7 +10,15 @@ export function normalizeInviteCode(value: string) {
 export function generateInviteCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
+  const browserCrypto = globalThis.crypto;
+
+  if (browserCrypto?.getRandomValues) {
+    browserCrypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
 
   return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
