@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptionChips } from "@/components/findings/option-chips";
 
 interface EditableFieldProps {
   value: string;
@@ -13,6 +14,8 @@ interface EditableFieldProps {
   className?: string;
   placeholder?: string;
   preview?: React.ReactNode;
+  suggestions?: string[];
+  suggestionsLabel?: string;
 }
 
 export function EditableField({
@@ -22,6 +25,8 @@ export function EditableField({
   className = "",
   placeholder = "Klicke zum Bearbeiten...",
   preview,
+  suggestions = [],
+  suggestionsLabel = "Schon vorhanden",
 }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -68,6 +73,12 @@ export function EditableField({
             <X className="w-3.5 h-3.5 mr-1" /> Abbrechen
           </Button>
         </div>
+        <OptionChips
+          label={suggestionsLabel}
+          options={suggestions}
+          selected={draft ? [draft] : []}
+          onSelect={(option) => setDraft(option)}
+        />
       </div>
     );
   }

@@ -1,14 +1,15 @@
 "use client";
 
-import { use, useState, useRef } from "react";
+import { use, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useFinding, updateFinding } from "@/hooks/use-findings";
+import { useFinding, useFindings, updateFinding } from "@/hooks/use-findings";
 import { EditableField } from "@/components/findings/editable-field";
 import { ContentRenderer } from "@/components/findings/content-renderer";
-import { Badge } from "@/components/ui/badge";
+import { TagsEditor } from "@/components/findings/tags-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { getExistingCategories, getExistingTags } from "@/lib/finding-options";
 import { getCategoryConfig } from "@/lib/categories";
 import {
   ArrowLeft,
@@ -39,6 +40,12 @@ export default function FindingPage({
   const router = useRouter();
   const { currentSession } = useSession();
   const { finding, loading } = useFinding(id);
+  const { findings } = useFindings();
+  const existingCategories = useMemo(
+    () => getExistingCategories(findings),
+    [findings]
+  );
+  const existingTags = useMemo(() => getExistingTags(findings), [findings]);
   const [imageOpen, setImageOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -277,6 +284,8 @@ export default function FindingPage({
                 onSave={(category) => saveFinding({ category })}
                 className="text-sm font-medium"
                 placeholder="Kategorie..."
+                suggestions={existingCategories}
+                suggestionsLabel="Vorhandene Kategorien"
               />
             </div>
 
@@ -293,12 +302,15 @@ export default function FindingPage({
               />
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap mt-1">
-              {Array.isArray(finding.tags) && finding.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
+            <div className="space-y-1 mt-1">
+              <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5" /> Tags
+              </h3>
+              <TagsEditor
+                tags={finding.tags}
+                suggestions={existingTags}
+                onSave={(tags) => saveFinding({ tags })}
+              />
             </div>
           </div>
 

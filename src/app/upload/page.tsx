@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -24,6 +24,12 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { useFindings } from "@/hooks/use-findings";
 import { useSession } from "@/components/auth/session-context";
+import { OptionChips } from "@/components/findings/option-chips";
+import {
+  getExistingCategories,
+  getExistingTags,
+  parseTagInput,
+} from "@/lib/finding-options";
 
 type CreationMode = "ai" | "manual";
 
@@ -40,21 +46,15 @@ function getFileTitle(file: File) {
   return file.name.replace(/\.[^.]+$/, "");
 }
 
-function parseTags(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(/[,;\n]/)
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    )
-  );
-}
-
 export default function UploadPage() {
   const router = useRouter();
   const { currentSession } = useSession();
   const { findings } = useFindings();
+  const existingCategories = useMemo(
+    () => getExistingCategories(findings),
+    [findings]
+  );
+  const existingTags = useMemo(() => getExistingTags(findings), [findings]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,6 +70,14 @@ export default function UploadPage() {
   const [manualTags, setManualTags] = useState("");
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState("");
+  const selectedManualTags = useMemo(
+    () => parseTagInput(manualTags),
+    [manualTags]
+  );
+
+  function addManualTag(tag: string) {
+    setManualTags(Array.from(new Set([...selectedManualTags, tag])).join(", "));
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -107,8 +115,6 @@ export default function UploadPage() {
       if (mode === "ai") {
         setStatus("KI analysiert das Bild...");
         
-        const existingCategories = Array.from(new Set(findings.map(f => f.category)));
-
         // Compress and resize image for AI (max 1600px)
         const imageBase64 = await new Promise<string>((resolve, reject) => {
           const img = new window.Image();
@@ -191,7 +197,7 @@ export default function UploadPage() {
           category: manualCategory.trim() || "allgemein",
           description: manualDescription.trim(),
           extractedText: manualExtractedText.trim(),
-          tags: parseTags(manualTags),
+          tags: selectedManualTags,
           customContent: [],
         };
       }
@@ -406,9 +412,21 @@ export default function UploadPage() {
                 </Label>
                 <Input
                   id="manual-category"
+                  list="existing-categories"
                   value={manualCategory}
                   onChange={(e) => setManualCategory(e.target.value)}
                   placeholder="allgemein"
+                />
+                <datalist id="existing-categories">
+                  {existingCategories.map((category) => (
+                    <option key={category} value={category} />
+                  ))}
+                </datalist>
+                <OptionChips
+                  label="Vorhandene Kategorien"
+                  options={existingCategories}
+                  selected={manualCategory ? [manualCategory] : []}
+                  onSelect={setManualCategory}
                 />
               </div>
             </div>
@@ -451,6 +469,12 @@ export default function UploadPage() {
                 value={manualTags}
                 onChange={(e) => setManualTags(e.target.value)}
                 placeholder="rätsel, bibliothek, code"
+              />
+              <OptionChips
+                label="Vorhandene Tags"
+                options={existingTags}
+                selected={selectedManualTags}
+                onSelect={addManualTag}
               />
             </div>
           </div>
