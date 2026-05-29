@@ -16,7 +16,8 @@ export default function CategoryPage({
 }: {
   params: Promise<{ category: string }>;
 }) {
-  const { category } = use(params);
+  const { category: categoryParam } = use(params);
+  const category = decodeURIComponent(categoryParam);
   const { findings, loading } = useFindings();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [search, setSearch] = useState("");

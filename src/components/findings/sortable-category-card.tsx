@@ -34,7 +34,7 @@ export function SortableCategoryCard({ id, config, items }: SortableCategoryCard
 
   return (
     <div ref={setNodeRef} style={style} className="relative group h-full">
-      <Link href={`/category/${id}`} className="h-full block">
+      <Link href={`/category/${encodeURIComponent(id)}`} className="h-full block">
         <Card className="overflow-hidden hover:border-primary/50 transition-colors group cursor-pointer h-full flex flex-col">
           {/* Collage Preview */}
           <div className="relative h-40 bg-muted flex overflow-hidden shrink-0">

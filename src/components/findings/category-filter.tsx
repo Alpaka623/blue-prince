@@ -33,7 +33,7 @@ export function CategoryFilter({ selected, counts }: CategoryFilterProps) {
         const config = getCategoryConfig(key);
         const count = counts[key] || 0;
         return (
-          <Link key={key} href={`/category/${key}`}>
+          <Link key={key} href={`/category/${encodeURIComponent(key)}`}>
             <Button
               variant={selected === key ? "secondary" : "ghost"}
               size="sm"
