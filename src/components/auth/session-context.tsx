@@ -21,6 +21,7 @@ import {
   clearStoredSession,
   parseStoredSession,
   readStoredSessionValue,
+  subscribeStoredSessionChange,
   writeStoredSession,
 } from "@/lib/session-storage";
 
@@ -36,7 +37,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const storedSessionValue = useSyncExternalStore(
-    () => () => {},
+    subscribeStoredSessionChange,
     readStoredSessionValue,
     () => null
   );

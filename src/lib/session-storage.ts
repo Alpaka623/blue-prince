@@ -1,6 +1,31 @@
 import type { BoardSession } from "@/lib/sessions";
 
 export const SESSION_STORAGE_KEY = "bp-wiki-session";
+const SESSION_STORAGE_EVENT = "bp-wiki-session-change";
+
+function notifyStoredSessionChange() {
+  if (typeof window === "undefined") return;
+
+  window.dispatchEvent(new Event(SESSION_STORAGE_EVENT));
+}
+
+export function subscribeStoredSessionChange(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  function handleStorage(event: StorageEvent) {
+    if (event.key === SESSION_STORAGE_KEY) {
+      onStoreChange();
+    }
+  }
+
+  window.addEventListener(SESSION_STORAGE_EVENT, onStoreChange);
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    window.removeEventListener(SESSION_STORAGE_EVENT, onStoreChange);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
 
 export function readStoredSessionValue() {
   if (typeof window === "undefined") return null;
@@ -39,6 +64,8 @@ export function writeStoredSession(session: BoardSession, remember: boolean) {
   } else {
     window.sessionStorage.setItem(SESSION_STORAGE_KEY, value);
   }
+
+  notifyStoredSessionChange();
 }
 
 export function clearStoredSession() {
@@ -46,4 +73,5 @@ export function clearStoredSession() {
 
   window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  notifyStoredSessionChange();
 }

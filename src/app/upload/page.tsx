@@ -75,8 +75,12 @@ export default function UploadPage() {
     [manualTags]
   );
 
-  function addManualTag(tag: string) {
-    setManualTags(Array.from(new Set([...selectedManualTags, tag])).join(", "));
+  function toggleManualTag(tag: string) {
+    setManualTags(
+      selectedManualTags.includes(tag)
+        ? selectedManualTags.filter((selectedTag) => selectedTag !== tag).join(", ")
+        : Array.from(new Set([...selectedManualTags, tag])).join(", ")
+    );
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -474,7 +478,7 @@ export default function UploadPage() {
                 label="Vorhandene Tags"
                 options={existingTags}
                 selected={selectedManualTags}
-                onSelect={addManualTag}
+                onSelect={toggleManualTag}
               />
             </div>
           </div>

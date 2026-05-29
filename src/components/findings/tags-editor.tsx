@@ -24,8 +24,14 @@ export function TagsEditor({ tags, suggestions, onSave }: TagsEditorProps) {
   const [draft, setDraft] = useState(formatTags(safeTags));
   const draftTags = parseTagInput(draft);
 
-  function addTag(tag: string) {
-    setDraft(formatTags(Array.from(new Set([...draftTags, tag]))));
+  function toggleTag(tag: string) {
+    setDraft(
+      formatTags(
+        draftTags.includes(tag)
+          ? draftTags.filter((draftTag) => draftTag !== tag)
+          : Array.from(new Set([...draftTags, tag]))
+      )
+    );
   }
 
   function handleSave() {
@@ -62,7 +68,7 @@ export function TagsEditor({ tags, suggestions, onSave }: TagsEditorProps) {
           label="Vorhandene Tags"
           options={suggestions}
           selected={draftTags}
-          onSelect={addTag}
+          onSelect={toggleTag}
         />
       </div>
     );
