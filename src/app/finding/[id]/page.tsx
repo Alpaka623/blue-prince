@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getCategoryConfig, CATEGORIES } from "@/lib/categories";
+import { getCategoryConfig } from "@/lib/categories";
 import {
   ArrowLeft,
   Loader2,
@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useSession } from "@/components/auth/session-context";
 
 export default function FindingPage({
   params,
@@ -36,6 +37,7 @@ export default function FindingPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { currentSession } = useSession();
   const { finding, loading } = useFinding(id);
   const [imageOpen, setImageOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -67,7 +69,7 @@ export default function FindingPage({
   const cat = getCategoryConfig(finding.category);
 
   async function handleDelete() {
-    if (!finding) return;
+    if (!finding || !currentSession) return;
     if (!confirm("Diesen Fund wirklich löschen?")) return;
     try {
       await fetch("/api/upload", {
@@ -78,9 +80,16 @@ export default function FindingPage({
     } catch {
       // best-effort
     }
-    await deleteDoc(doc(db, "findings", finding.id));
+    await deleteDoc(
+      doc(db, "sessions", currentSession.inviteCode, "findings", finding.id)
+    );
     toast.success("Fund gelöscht.");
     router.push("/");
+  }
+
+  async function saveFinding(data: Parameters<typeof updateFinding>[2]) {
+    if (!currentSession || !finding) return;
+    await updateFinding(currentSession.inviteCode, finding.id, data);
   }
 
   function handleWheel(e: React.WheelEvent) {
@@ -253,7 +262,7 @@ export default function FindingPage({
         <div className="space-y-4">
           <EditableField
             value={finding.title}
-            onSave={(title) => updateFinding(finding.id, { title })}
+            onSave={(title) => saveFinding({ title })}
             className="text-xl font-bold"
           />
 
@@ -265,7 +274,7 @@ export default function FindingPage({
               </div>
               <EditableField
                 value={finding.category}
-                onSave={(category) => updateFinding(finding.id, { category })}
+                onSave={(category) => saveFinding({ category })}
                 className="text-sm font-medium"
                 placeholder="Kategorie..."
               />
@@ -278,7 +287,7 @@ export default function FindingPage({
               </div>
               <EditableField
                 value={finding.room || ""}
-                onSave={(room) => updateFinding(finding.id, { room })}
+                onSave={(room) => saveFinding({ room })}
                 className="text-sm text-muted-foreground"
                 placeholder="Raum hinzufügen..."
               />
@@ -303,7 +312,7 @@ export default function FindingPage({
               </h3>
               <EditableField
                 value={finding.extractedText}
-                onSave={(extractedText) => updateFinding(finding.id, { extractedText })}
+                onSave={(extractedText) => saveFinding({ extractedText })}
                 multiline
                 className="font-mono text-xs whitespace-pre-wrap"
               />
@@ -318,7 +327,7 @@ export default function FindingPage({
               </h3>
               <EditableField
                 value={finding.description}
-                onSave={(description) => updateFinding(finding.id, { description })}
+                onSave={(description) => saveFinding({ description })}
                 multiline
                 preview={
                   <div className="prose prose-sm prose-invert max-w-none text-muted-foreground">
@@ -338,7 +347,7 @@ export default function FindingPage({
             </h3>
             <EditableField
               value={finding.notes || ""}
-              onSave={(notes) => updateFinding(finding.id, { notes })}
+              onSave={(notes) => saveFinding({ notes })}
               multiline
               placeholder="Eigene Notizen hinzufügen (Markdown unterstützt)..."
               preview={
@@ -362,6 +371,7 @@ export default function FindingPage({
             <ContentRenderer
               blocks={finding.customContent}
               findingId={finding.id}
+              inviteCode={currentSession?.inviteCode || ""}
             />
           </CardContent>
         </Card>

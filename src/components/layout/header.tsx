@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Upload, Home, Menu } from "lucide-react";
+import { Copy, LogOut, Menu, Home, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useSession } from "@/components/auth/session-context";
 import {
   Sheet,
   SheetContent,
@@ -20,6 +22,12 @@ const NAV_ITEMS = [
 
 export function Header() {
   const pathname = usePathname();
+  const { currentSession, logout } = useSession();
+
+  async function copyInviteCode() {
+    if (!currentSession) return;
+    await navigator.clipboard?.writeText(currentSession.inviteCode);
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -45,6 +53,34 @@ export function Header() {
             </Link>
           ))}
         </nav>
+
+        <div className="hidden sm:flex items-center gap-2">
+          {currentSession && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={copyInviteCode}
+              className="gap-2"
+              title="Invitecode kopieren"
+            >
+              <Badge variant="secondary" className="font-mono">
+                {currentSession.inviteCode}
+              </Badge>
+              <Copy className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={logout}
+            className="gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
+        </div>
 
         <div className="sm:hidden">
           <Sheet>
@@ -74,6 +110,26 @@ export function Header() {
                     </Button>
                   </Link>
                 ))}
+                {currentSession && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start gap-2 font-mono"
+                    onClick={copyInviteCode}
+                  >
+                    <Copy className="w-4 h-4" />
+                    {currentSession.inviteCode}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  onClick={logout}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </Button>
               </nav>
             </SheetContent>
           </Sheet>

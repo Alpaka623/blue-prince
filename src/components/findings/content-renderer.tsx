@@ -6,9 +6,10 @@ import { ChecklistBlock } from "./checklist-block";
 interface ContentRendererProps {
   blocks: CustomContentBlock[];
   findingId: string;
+  inviteCode: string;
 }
 
-export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
+export function ContentRenderer({ blocks, findingId, inviteCode }: ContentRendererProps) {
   if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return null;
 
   return (
@@ -39,6 +40,7 @@ export function ContentRenderer({ blocks, findingId }: ContentRendererProps) {
                 block={block}
                 blockIndex={index}
                 findingId={findingId}
+                inviteCode={inviteCode}
               />
             );
           case "table":

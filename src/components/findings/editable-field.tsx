@@ -28,10 +28,6 @@ export function EditableField({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setDraft(value);
-  }, [value]);
-
-  useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
     }
@@ -79,7 +75,10 @@ export function EditableField({
   return (
     <div
       className={`group cursor-pointer rounded px-2 py-1 -mx-2 hover:bg-muted/50 transition-colors ${className}`}
-      onClick={() => setEditing(true)}
+      onClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
     >
       <div className="flex items-start gap-2">
         <div className={`flex-1 ${!value ? "text-muted-foreground italic" : ""}`}>

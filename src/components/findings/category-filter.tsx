@@ -8,11 +8,10 @@ import Link from "next/link";
 
 interface CategoryFilterProps {
   selected: FindingCategory | null;
-  onSelect?: (category: FindingCategory | null) => void;
   counts: Record<string, number>;
 }
 
-export function CategoryFilter({ selected, onSelect, counts }: CategoryFilterProps) {
+export function CategoryFilter({ selected, counts }: CategoryFilterProps) {
   const sortedCategories = Object.keys(counts).sort((a, b) => {
     if (a === "allgemein") return -1;
     if (b === "allgemein") return 1;

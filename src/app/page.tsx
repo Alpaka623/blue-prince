@@ -7,7 +7,6 @@ import { CategoryFilter } from "@/components/findings/category-filter";
 import { SearchBar } from "@/components/findings/search-bar";
 import { CategoryGrid } from "@/components/findings/category-grid";
 import { TagFilter } from "@/components/findings/tag-filter";
-import type { FindingCategory } from "@/lib/types";
 
 export default function HomePage() {
   const { findings, loading } = useFindings();

@@ -13,9 +13,11 @@ import { Camera, DoorClosed, ImagePlus, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useFindings } from "@/hooks/use-findings";
+import { useSession } from "@/components/auth/session-context";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { currentSession } = useSession();
   const { findings } = useFindings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +39,7 @@ export default function UploadPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || !currentSession) return;
 
     setUploading(true);
 
@@ -115,12 +117,15 @@ export default function UploadPage() {
           console.error(`AI API Error (${status}): ${statusText}`, errorMessage);
           throw new Error(`KI-Dienst meldet Fehler (${status}): ${errorMessage}`);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Critical AI Analysis Error:", err);
-        const isTimeout = err.name === "AbortError" || err.message?.includes("fetch");
+        const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler";
+        const isTimeout =
+          err instanceof Error &&
+          (err.name === "AbortError" || err.message.includes("fetch"));
         const msg = isTimeout 
           ? "Die KI-Analyse hat zu lange gedauert (Timeout). Der Fund wird ohne Analyse gespeichert."
-          : `KI-Analyse fehlgeschlagen: ${err.message}. Speichere ohne KI-Daten.`;
+          : `KI-Analyse fehlgeschlagen: ${errorMessage}. Speichere ohne KI-Daten.`;
         
         toast.error(msg);
         aiResult = {
@@ -135,21 +140,22 @@ export default function UploadPage() {
       console.log("Saving to Firestore...");
 
       // Helper to sanitize data for Firestore (remove nested arrays)
-      const sanitizeForFirestore = (obj: any): any => {
+      const sanitizeForFirestore = (obj: unknown): unknown => {
         if (Array.isArray(obj)) {
           return obj.map(v => sanitizeForFirestore(v));
         } else if (obj !== null && typeof obj === 'object') {
-          const sanitized: any = {};
-          for (const key in obj) {
+          const sanitized: Record<string, unknown> = {};
+          const record = obj as Record<string, unknown>;
+          for (const key in record) {
             // Firestore doesn't like nested arrays. 
             // If the value is an array, we ensure its children are not arrays.
-            if (Array.isArray(obj[key])) {
-              sanitized[key] = obj[key].map((item: any) => {
+            if (Array.isArray(record[key])) {
+              sanitized[key] = record[key].map((item: unknown) => {
                 if (Array.isArray(item)) return JSON.stringify(item); // Flatten nested arrays
                 return sanitizeForFirestore(item);
               });
             } else {
-              sanitized[key] = sanitizeForFirestore(obj[key]);
+              sanitized[key] = sanitizeForFirestore(record[key]);
             }
           }
           return sanitized;
@@ -173,8 +179,11 @@ export default function UploadPage() {
         updatedAt: Timestamp.now(),
       };
 
-      const sanitizedData = sanitizeForFirestore(rawData);
-      const docRef = await addDoc(collection(db, "findings"), sanitizedData);
+      const sanitizedData = sanitizeForFirestore(rawData) as Record<string, unknown>;
+      const docRef = await addDoc(
+        collection(db, "sessions", currentSession.inviteCode, "findings"),
+        sanitizedData
+      );
       console.log("Firestore save successful, ID:", docRef.id);
 
       toast.success("Fund erfolgreich hochgeladen!");

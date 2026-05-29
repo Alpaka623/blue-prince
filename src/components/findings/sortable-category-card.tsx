@@ -7,11 +7,12 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight, GripVertical } from "lucide-react";
 import { DoorOpen } from "lucide-react";
+import type { Finding } from "@/lib/types";
 
 interface SortableCategoryCardProps {
   id: string;
   config: { label: string; icon?: typeof DoorOpen; color: string };
-  items: any[];
+  items: Finding[];
 }
 
 export function SortableCategoryCard({ id, config, items }: SortableCategoryCardProps) {

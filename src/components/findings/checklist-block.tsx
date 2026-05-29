@@ -9,11 +9,17 @@ interface ChecklistBlockProps {
   block: Extract<CustomContentBlock, { type: "checklist" }>;
   blockIndex: number;
   findingId: string;
+  inviteCode: string;
 }
 
-export function ChecklistBlock({ block, blockIndex, findingId }: ChecklistBlockProps) {
+export function ChecklistBlock({
+  block,
+  blockIndex,
+  findingId,
+  inviteCode,
+}: ChecklistBlockProps) {
   async function toggleItem(itemIndex: number) {
-    const docRef = doc(db, "findings", findingId);
+    const docRef = doc(db, "sessions", inviteCode, "findings", findingId);
     const newChecked = !block.items[itemIndex].checked;
 
     // Firestore doesn't support array-index field paths, so we update the whole customContent

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -20,17 +20,18 @@ import { SortableCategoryCard } from "./sortable-category-card";
 import { getCategoryConfig } from "@/lib/categories";
 import type { Finding } from "@/lib/types";
 import { useSettings, updateCategoryOrder } from "@/hooks/use-findings";
+import { useSession } from "@/components/auth/session-context";
 
 interface CategoryGridProps {
   findings: Finding[];
 }
 
 export function CategoryGrid({ findings }: CategoryGridProps) {
+  const { currentSession } = useSession();
   const { categoryOrder, loading: settingsLoading } = useSettings();
-  const [items, setItems] = useState<string[]>([]);
 
   // Calculate unique categories and merge with global order
-  useEffect(() => {
+  const items = useMemo(() => {
     const uniqueCategories = Array.from(new Set((findings || []).map(f => f.category)));
     
     // Sort based on global categoryOrder, then append new ones
@@ -42,7 +43,7 @@ export function CategoryGrid({ findings }: CategoryGridProps) {
     // Add new categories that are not yet in the order
     const newOnes = uniqueCategories.filter(cat => !existing.includes(cat));
     
-    setItems([...existing, ...newOnes]);
+    return [...existing, ...newOnes];
   }, [findings, categoryOrder]);
 
   const sensors = useSensors(
@@ -62,10 +63,10 @@ export function CategoryGrid({ findings }: CategoryGridProps) {
       const newIndex = items.indexOf(over.id as string);
 
       const newItems = arrayMove(items, oldIndex, newIndex);
-      setItems(newItems);
 
       try {
-        await updateCategoryOrder(newItems);
+        if (!currentSession) return;
+        await updateCategoryOrder(currentSession.inviteCode, newItems);
       } catch (error) {
         console.error("Failed to save category order:", error);
       }

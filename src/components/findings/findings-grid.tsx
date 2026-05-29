@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -20,6 +19,7 @@ import { SortableFindingCard } from "./sortable-finding-card";
 import type { Finding } from "@/lib/types";
 import { Loader2, SearchX } from "lucide-react";
 import { updateFindingsOrder } from "@/hooks/use-findings";
+import { useSession } from "@/components/auth/session-context";
 
 interface FindingsGridProps {
   findings: Finding[];
@@ -27,7 +27,7 @@ interface FindingsGridProps {
 }
 
 export function FindingsGrid({ findings, loading }: FindingsGridProps) {
-  const [items, setItems] = useState<Finding[]>(findings);
+  const { currentSession } = useSession();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -39,10 +39,6 @@ export function FindingsGrid({ findings, loading }: FindingsGridProps) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  useEffect(() => {
-    setItems(findings);
-  }, [findings]);
 
   if (loading) {
     return (
@@ -68,11 +64,10 @@ export function FindingsGrid({ findings, loading }: FindingsGridProps) {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex((item) => item.id === active.id);
-      const newIndex = items.findIndex((item) => item.id === over.id);
+      const oldIndex = findings.findIndex((item) => item.id === active.id);
+      const newIndex = findings.findIndex((item) => item.id === over.id);
 
-      const newItems = arrayMove(items, oldIndex, newIndex);
-      setItems(newItems);
+      const newItems = arrayMove(findings, oldIndex, newIndex);
 
       // Save new order to Firestore
       // We use a timestamp-like order but strictly sequential based on current items
@@ -85,7 +80,8 @@ export function FindingsGrid({ findings, loading }: FindingsGridProps) {
       }));
 
       try {
-        await updateFindingsOrder(updates);
+        if (!currentSession) return;
+        await updateFindingsOrder(currentSession.inviteCode, updates);
       } catch (error) {
         console.error("Failed to update order:", error);
       }
@@ -98,9 +94,9 @@ export function FindingsGrid({ findings, loading }: FindingsGridProps) {
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={items} strategy={rectSortingStrategy}>
+      <SortableContext items={findings} strategy={rectSortingStrategy}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((finding) => (
+          {findings.map((finding) => (
             <SortableFindingCard key={finding.id} finding={finding} />
           ))}
         </div>

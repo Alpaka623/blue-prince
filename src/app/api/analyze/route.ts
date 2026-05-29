@@ -24,10 +24,11 @@ export async function POST(request: NextRequest) {
     console.log("API: AI Analysis successful");
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("API Error: AI Analysis failed:", error);
     return NextResponse.json(
-      { error: `Internal Server Error: ${error.message || "Unknown error"}` },
+      { error: `Internal Server Error: ${message}` },
       { status: 500 }
     );
   }

@@ -5,7 +5,6 @@ import {
   collection,
   onSnapshot,
   query,
-  orderBy,
   doc,
   updateDoc,
   writeBatch,
@@ -13,15 +12,33 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Finding } from "@/lib/types";
+import { useSession } from "@/components/auth/session-context";
+
+function getFindingsCollection(inviteCode: string) {
+  return collection(db, "sessions", inviteCode, "findings");
+}
+
+function getFindingDoc(inviteCode: string, id: string) {
+  return doc(db, "sessions", inviteCode, "findings", id);
+}
+
+function getSettingsDoc(inviteCode: string) {
+  return doc(db, "sessions", inviteCode, "settings", "general");
+}
 
 export function useFindings() {
+  const { currentSession } = useSession();
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!currentSession) {
+      return;
+    }
+
     // We fetch without a strict 'orderBy(order)' filter initially 
     // because documents without the 'order' field would be hidden by Firestore.
-    const q = query(collection(db, "findings"));
+    const q = query(getFindingsCollection(currentSession.inviteCode));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -41,17 +58,22 @@ export function useFindings() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [currentSession]);
 
   return { findings, loading };
 }
 
 export function useFinding(id: string) {
+  const { currentSession } = useSession();
   const [finding, setFinding] = useState<Finding | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, "findings", id), (snapshot) => {
+    if (!currentSession) {
+      return;
+    }
+
+    const unsubscribe = onSnapshot(getFindingDoc(currentSession.inviteCode, id), (snapshot) => {
       if (snapshot.exists()) {
         setFinding({ id: snapshot.id, ...snapshot.data() } as Finding);
       } else {
@@ -61,48 +83,59 @@ export function useFinding(id: string) {
     });
 
     return unsubscribe;
-  }, [id]);
+  }, [id, currentSession]);
 
   return { finding, loading };
 }
 
 export async function updateFinding(
+  inviteCode: string,
   id: string,
   data: Partial<Omit<Finding, "id">>
 ) {
-  await updateDoc(doc(db, "findings", id), {
+  await updateDoc(getFindingDoc(inviteCode, id), {
     ...data,
     updatedAt: new Date(),
   });
 }
 
-export async function updateFindingsOrder(updates: { id: string; order: number }[]) {
+export async function updateFindingsOrder(
+  inviteCode: string,
+  updates: { id: string; order: number }[]
+) {
   const batch = writeBatch(db);
   updates.forEach(({ id, order }) => {
-    const docRef = doc(db, "findings", id);
+    const docRef = getFindingDoc(inviteCode, id);
     batch.update(docRef, { order, updatedAt: new Date() });
   });
   await batch.commit();
 }
 
 export function useSettings() {
+  const { currentSession } = useSession();
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, "settings", "general"), (snapshot) => {
+    if (!currentSession) {
+      return;
+    }
+
+    const unsubscribe = onSnapshot(getSettingsDoc(currentSession.inviteCode), (snapshot) => {
       if (snapshot.exists()) {
         setCategoryOrder(snapshot.data().categoryOrder || []);
+      } else {
+        setCategoryOrder([]);
       }
       setLoading(false);
     });
 
     return unsubscribe;
-  }, []);
+  }, [currentSession]);
 
   return { categoryOrder, loading };
 }
 
-export async function updateCategoryOrder(order: string[]) {
-  await setDoc(doc(db, "settings", "general"), { categoryOrder: order }, { merge: true });
+export async function updateCategoryOrder(inviteCode: string, order: string[]) {
+  await setDoc(getSettingsDoc(inviteCode), { categoryOrder: order }, { merge: true });
 }
