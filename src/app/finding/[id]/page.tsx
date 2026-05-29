@@ -323,7 +323,7 @@ export default function FindingPage({
           {finding.description && (
             <div>
               <h3 className="text-sm font-semibold mb-1 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5" /> KI-Beschreibung
+                <Tag className="w-3.5 h-3.5" /> Beschreibung
               </h3>
               <EditableField
                 value={finding.description}

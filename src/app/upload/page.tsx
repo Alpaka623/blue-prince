@@ -9,11 +9,47 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Camera, DoorClosed, ImagePlus, Loader2, Sparkles } from "lucide-react";
+import {
+  Camera,
+  DoorClosed,
+  FileText,
+  ImagePlus,
+  Loader2,
+  PencilLine,
+  Sparkles,
+  Tag,
+  Type,
+} from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useFindings } from "@/hooks/use-findings";
 import { useSession } from "@/components/auth/session-context";
+
+type CreationMode = "ai" | "manual";
+
+type FindingDetails = {
+  title: string;
+  category: string;
+  description: string;
+  extractedText?: string;
+  tags: string[];
+  customContent?: unknown[];
+};
+
+function getFileTitle(file: File) {
+  return file.name.replace(/\.[^.]+$/, "");
+}
+
+function parseTags(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,;\n]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  );
+}
 
 export default function UploadPage() {
   const router = useRouter();
@@ -24,8 +60,14 @@ export default function UploadPage() {
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [mode, setMode] = useState<CreationMode>("ai");
   const [customPrompt, setCustomPrompt] = useState("");
   const [room, setRoom] = useState("");
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualCategory, setManualCategory] = useState("allgemein");
+  const [manualDescription, setManualDescription] = useState("");
+  const [manualExtractedText, setManualExtractedText] = useState("");
+  const [manualTags, setManualTags] = useState("");
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -35,11 +77,17 @@ export default function UploadPage() {
     setFile(selected);
     const url = URL.createObjectURL(selected);
     setPreview(url);
+    setManualTitle((current) => current || getFileTitle(selected));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file || !currentSession) return;
+
+    if (mode === "manual" && !manualTitle.trim()) {
+      toast.error("Bitte gib einen Titel ein.");
+      return;
+    }
 
     setUploading(true);
 
@@ -54,85 +102,97 @@ export default function UploadPage() {
       if (!uploadResponse.ok) throw new Error("Upload failed");
       const { imageUrl, imagePath } = await uploadResponse.json();
 
-      setStatus("KI analysiert das Bild...");
-      
-      const existingCategories = Array.from(new Set(findings.map(f => f.category)));
+      let findingDetails: FindingDetails;
 
-      // Compress and resize image for AI (max 1600px)
-      const imageBase64 = await new Promise<string>((resolve, reject) => {
-        const img = new window.Image();
-        img.src = preview!;
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          let width = img.width;
-          let height = img.height;
-          const maxSide = 1600;
+      if (mode === "ai") {
+        setStatus("KI analysiert das Bild...");
+        
+        const existingCategories = Array.from(new Set(findings.map(f => f.category)));
 
-          if (width > maxSide || height > maxSide) {
-            if (width > height) {
-              height = (height / width) * maxSide;
-              width = maxSide;
-            } else {
-              width = (width / height) * maxSide;
-              height = maxSide;
+        // Compress and resize image for AI (max 1600px)
+        const imageBase64 = await new Promise<string>((resolve, reject) => {
+          const img = new window.Image();
+          img.src = preview!;
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+            const maxSide = 1600;
+
+            if (width > maxSide || height > maxSide) {
+              if (width > height) {
+                height = (height / width) * maxSide;
+                width = maxSide;
+              } else {
+                width = (width / height) * maxSide;
+                height = maxSide;
+              }
             }
-          }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
-        };
-        img.onerror = reject;
-      });
-
-      let aiResult;
-      try {
-        console.log("Starting AI analysis request...");
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageBase64,
-            mimeType: "image/jpeg",
-            customPrompt: customPrompt || undefined,
-            existingCategories,
-          }),
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx?.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.8).split(",")[1]);
+          };
+          img.onerror = reject;
         });
 
-        if (response.ok) {
-          aiResult = await response.json();
-          console.log("AI analysis successful:", aiResult);
-        } else {
-          const status = response.status;
-          const statusText = response.statusText;
-          let errorMessage = "Unbekannter Fehler";
-          try {
-            const errData = await response.json();
-            errorMessage = errData.error || errorMessage;
-          } catch {
-            // fallback if not JSON
+        try {
+          console.log("Starting AI analysis request...");
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageBase64,
+              mimeType: "image/jpeg",
+              customPrompt: customPrompt || undefined,
+              existingCategories,
+            }),
+          });
+
+          if (response.ok) {
+            findingDetails = await response.json();
+            console.log("AI analysis successful:", findingDetails);
+          } else {
+            const status = response.status;
+            const statusText = response.statusText;
+            let errorMessage = "Unbekannter Fehler";
+            try {
+              const errData = await response.json();
+              errorMessage = errData.error || errorMessage;
+            } catch {
+              // fallback if not JSON
+            }
+            console.error(`AI API Error (${status}): ${statusText}`, errorMessage);
+            throw new Error(`KI-Dienst meldet Fehler (${status}): ${errorMessage}`);
           }
-          console.error(`AI API Error (${status}): ${statusText}`, errorMessage);
-          throw new Error(`KI-Dienst meldet Fehler (${status}): ${errorMessage}`);
+        } catch (err: unknown) {
+          console.error("Critical AI Analysis Error:", err);
+          const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler";
+          const isTimeout =
+            err instanceof Error &&
+            (err.name === "AbortError" || err.message.includes("fetch"));
+          const msg = isTimeout 
+            ? "Die KI-Analyse hat zu lange gedauert (Timeout). Der Fund wird ohne Analyse gespeichert."
+            : `KI-Analyse fehlgeschlagen: ${errorMessage}. Speichere ohne KI-Daten.`;
+          
+          toast.error(msg);
+          findingDetails = {
+            title: getFileTitle(file),
+            category: "allgemein",
+            description: "",
+            tags: [],
+          };
         }
-      } catch (err: unknown) {
-        console.error("Critical AI Analysis Error:", err);
-        const errorMessage = err instanceof Error ? err.message : "Unbekannter Fehler";
-        const isTimeout =
-          err instanceof Error &&
-          (err.name === "AbortError" || err.message.includes("fetch"));
-        const msg = isTimeout 
-          ? "Die KI-Analyse hat zu lange gedauert (Timeout). Der Fund wird ohne Analyse gespeichert."
-          : `KI-Analyse fehlgeschlagen: ${errorMessage}. Speichere ohne KI-Daten.`;
-        
-        toast.error(msg);
-        aiResult = {
-          title: file.name.replace(/\.[^.]+$/, ""),
-          category: "allgemein",
-          description: "",
-          tags: [],
+      } else {
+        findingDetails = {
+          title: manualTitle.trim(),
+          category: manualCategory.trim() || "allgemein",
+          description: manualDescription.trim(),
+          extractedText: manualExtractedText.trim(),
+          tags: parseTags(manualTags),
+          customContent: [],
         };
       }
 
@@ -166,14 +226,15 @@ export default function UploadPage() {
       const rawData = {
         imageUrl,
         imagePath,
-        title: aiResult.title,
-        category: aiResult.category,
+        title: findingDetails.title,
+        category: findingDetails.category,
         room: room.trim() || "",
-        description: aiResult.description || "",
-        extractedText: aiResult.extractedText || "",
-        tags: aiResult.tags || [],
-        customContent: aiResult.customContent || [],
-        aiRawResponse: JSON.stringify(aiResult),
+        description: findingDetails.description || "",
+        extractedText: findingDetails.extractedText || "",
+        tags: findingDetails.tags || [],
+        customContent: findingDetails.customContent || [],
+        customPrompt: mode === "ai" ? customPrompt.trim() : "",
+        aiRawResponse: mode === "ai" ? JSON.stringify(findingDetails) : "",
         order: Date.now(),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -186,7 +247,7 @@ export default function UploadPage() {
       );
       console.log("Firestore save successful, ID:", docRef.id);
 
-      toast.success("Fund erfolgreich hochgeladen!");
+      toast.success("Fund erfolgreich erstellt!");
       router.push(`/finding/${docRef.id}`);
     } catch (error) {
       console.error("Upload failed:", error);
@@ -200,13 +261,36 @@ export default function UploadPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Neuen Fund hochladen</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Neuen Fund erstellen</h1>
         <p className="text-muted-foreground mt-1">
-          Lade ein Foto oder Screenshot hoch und die KI analysiert es automatisch.
+          Lade ein Foto oder Screenshot hoch und wähle, wie die Details entstehen.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/30 p-1">
+          <Button
+            type="button"
+            variant={mode === "ai" ? "secondary" : "ghost"}
+            className="h-10"
+            aria-pressed={mode === "ai"}
+            onClick={() => setMode("ai")}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            KI gestützt
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "manual" ? "secondary" : "ghost"}
+            className="h-10"
+            aria-pressed={mode === "manual"}
+            onClick={() => setMode("manual")}
+          >
+            <PencilLine className="w-4 h-4 mr-2" />
+            Manuell
+          </Button>
+        </div>
+
         {preview ? (
           <Card className="overflow-hidden">
             <div className="relative aspect-video">
@@ -282,26 +366,100 @@ export default function UploadPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="prompt" className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            KI-Anweisung (optional)
-          </Label>
-          <Textarea
-            id="prompt"
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            rows={3}
-          />
-          <p className="text-xs text-muted-foreground">
-            Gib der KI zusätzliche Anweisungen, wie sie das Bild verarbeiten soll.
-          </p>
-        </div>
+        {mode === "ai" ? (
+          <div className="space-y-2">
+            <Label htmlFor="prompt" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              KI-Anweisung (optional)
+            </Label>
+            <Textarea
+              id="prompt"
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              Gib der KI zusätzliche Anweisungen, wie sie das Bild verarbeiten soll.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="manual-title" className="flex items-center gap-1.5">
+                  <Type className="w-4 h-4 text-muted-foreground" />
+                  Titel
+                </Label>
+                <Input
+                  id="manual-title"
+                  value={manualTitle}
+                  onChange={(e) => setManualTitle(e.target.value)}
+                  placeholder="z.B. Notiz aus der Bibliothek"
+                  required={mode === "manual"}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual-category" className="flex items-center gap-1.5">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  Kategorie
+                </Label>
+                <Input
+                  id="manual-category"
+                  value={manualCategory}
+                  onChange={(e) => setManualCategory(e.target.value)}
+                  placeholder="allgemein"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="manual-description" className="flex items-center gap-1.5">
+                <PencilLine className="w-4 h-4 text-muted-foreground" />
+                Beschreibung
+              </Label>
+              <Textarea
+                id="manual-description"
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                rows={4}
+                placeholder="Was sieht man, warum ist der Fund wichtig?"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="manual-text" className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                Text / Abschrift
+              </Label>
+              <Textarea
+                id="manual-text"
+                value={manualExtractedText}
+                onChange={(e) => setManualExtractedText(e.target.value)}
+                rows={4}
+                placeholder="Abgeschriebener Text aus dem Bild"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="manual-tags" className="flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-muted-foreground" />
+                Tags
+              </Label>
+              <Input
+                id="manual-tags"
+                value={manualTags}
+                onChange={(e) => setManualTags(e.target.value)}
+                placeholder="rätsel, bibliothek, code"
+              />
+            </div>
+          </div>
+        )}
 
         <Button
           type="submit"
           className="w-full"
-          disabled={!file || uploading}
+          disabled={!file || uploading || (mode === "manual" && !manualTitle.trim())}
         >
           {uploading ? (
             <>
@@ -310,8 +468,12 @@ export default function UploadPage() {
             </>
           ) : (
             <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Hochladen & Analysieren
+              {mode === "ai" ? (
+                <Sparkles className="w-4 h-4 mr-2" />
+              ) : (
+                <PencilLine className="w-4 h-4 mr-2" />
+              )}
+              {mode === "ai" ? "Hochladen & Analysieren" : "Fund speichern"}
             </>
           )}
         </Button>
