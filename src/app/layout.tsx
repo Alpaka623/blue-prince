@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -22,8 +23,10 @@ export default function RootLayout({
         <meta name="darkreader-lock" />
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster richColors position="bottom-right" />
+        <ThemeProvider>
+          {children}
+          <Toaster richColors position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );

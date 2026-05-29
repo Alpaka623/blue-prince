@@ -111,6 +111,105 @@ export async function updateFindingsOrder(
   await batch.commit();
 }
 
+async function commitFindingUpdates(
+  inviteCode: string,
+  updates: { id: string; data: Partial<Omit<Finding, "id">> }[]
+) {
+  const batchSize = 450;
+
+  for (let index = 0; index < updates.length; index += batchSize) {
+    const batch = writeBatch(db);
+
+    for (const update of updates.slice(index, index + batchSize)) {
+      batch.update(getFindingDoc(inviteCode, update.id), {
+        ...update.data,
+        updatedAt: new Date(),
+      });
+    }
+
+    await batch.commit();
+  }
+}
+
+function renameCategoryInOrder(order: string[], from: string, to: string) {
+  const nextOrder: string[] = [];
+
+  for (const category of order) {
+    const nextCategory = category === from ? to : category;
+
+    if (!nextOrder.includes(nextCategory)) {
+      nextOrder.push(nextCategory);
+    }
+  }
+
+  return nextOrder;
+}
+
+export async function deleteTagFromFindings(
+  inviteCode: string,
+  findings: Finding[],
+  tag: string
+) {
+  const affectedFindings = findings.filter(
+    (finding) => Array.isArray(finding.tags) && finding.tags.includes(tag)
+  );
+
+  await commitFindingUpdates(
+    inviteCode,
+    affectedFindings.map((finding) => ({
+      id: finding.id,
+      data: {
+        tags: finding.tags.filter((findingTag) => findingTag !== tag),
+      },
+    }))
+  );
+
+  return affectedFindings.length;
+}
+
+export async function renameCategoryInFindings(
+  inviteCode: string,
+  findings: Finding[],
+  categoryOrder: string[],
+  from: string,
+  to: string
+) {
+  const previousCategory = from.trim();
+  const nextCategory = to.trim();
+
+  if (!previousCategory || !nextCategory || previousCategory === nextCategory) {
+    return 0;
+  }
+
+  const affectedFindings = findings.filter(
+    (finding) => finding.category === previousCategory
+  );
+
+  await commitFindingUpdates(
+    inviteCode,
+    affectedFindings.map((finding) => ({
+      id: finding.id,
+      data: { category: nextCategory },
+    }))
+  );
+
+  if (categoryOrder.includes(previousCategory)) {
+    await setDoc(
+      getSettingsDoc(inviteCode),
+      {
+        categoryOrder: renameCategoryInOrder(
+          categoryOrder,
+          previousCategory,
+          nextCategory
+        ),
+      },
+      { merge: true }
+    );
+  }
+
+  return affectedFindings.length;
+}
+
 export function useSettings() {
   const { currentSession } = useSession();
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);

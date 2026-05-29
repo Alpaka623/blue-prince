@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Copy, LogOut, Menu, Home, Upload } from "lucide-react";
+import { Copy, LogOut, Menu, Home, Upload, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,15 @@ export function Header() {
         </nav>
 
         <div className="hidden sm:flex items-center gap-2">
+          <Button
+            type="button"
+            variant={pathname === "/settings" ? "secondary" : "ghost"}
+            size="icon-sm"
+            title="Einstellungen"
+            render={<Link href="/settings" aria-label="Einstellungen" />}
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
           {currentSession && (
             <Button
               type="button"
@@ -110,6 +119,18 @@ export function Header() {
                     </Button>
                   </Link>
                 ))}
+                <Link href="/settings">
+                  <Button
+                    variant={pathname === "/settings" ? "secondary" : "ghost"}
+                    className={cn(
+                      "w-full justify-start gap-2",
+                      pathname === "/settings" && "text-primary"
+                    )}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Einstellungen
+                  </Button>
+                </Link>
                 {currentSession && (
                   <Button
                     type="button"
